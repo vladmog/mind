@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}mind{% endblock %}</title>
+  <script>
+    (function () {
+      try {
+        var pref = localStorage.getItem('mind-theme');
+        var effective = pref;
+        if (effective !== 'light' && effective !== 'dark') {
+          effective = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', effective);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/mind.css">
+  <script defer src="/static/suggest.js"></script>
+  <script defer src="/static/menu.js"></script>
+  <script defer src="/static/theme.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">mind</a>
+    {% block searchbar %}
+    <form class="searchbar" action="/search" method="get" data-suggest>
+      <input type="search" name="q" placeholder="search the wiki…" value="{{ request.query_params.get('q', '') }}" autocomplete="off" aria-autocomplete="list">
+    </form>
+    {% endblock %}
+    <div class="nav-menu-wrap">
+      <button type="button" class="nav-menu-button" aria-haspopup="true" aria-expanded="false" aria-controls="nav-menu" aria-label="Open menu">
+        <svg class="nav-menu-icon" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+          <path d="M2 4h14M2 9h14M2 14h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <ul id="nav-menu" class="nav-menu" role="menu" hidden>
+        <li role="none"><a role="menuitem" href="/all">index</a></li>
+        <li role="none"><a role="menuitem" href="/graph">graph</a></li>
+        <li role="none"><a role="menuitem" href="/p/log">log</a></li>
+        <li role="none"><a role="menuitem" href="/p/contradictions">contradictions</a></li>
+        <li role="none"><a role="menuitem" href="/record">record</a></li>
+        <li role="none"><button type="button" role="menuitem" class="nav-menu-item" data-theme-toggle aria-live="polite">theme: system</button></li>
+      </ul>
+    </div>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

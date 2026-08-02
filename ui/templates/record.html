@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}mind — record{% endblock %}
+{% block content %}
+<section class="record">
+  <h2>voice entry</h2>
+  <div data-recorder data-variant="full"></div>
+</section>
+
+<section class="image-entry">
+  <h2>image entry</h2>
+  <div data-image-picker></div>
+</section>
+
+<section class="text-entry">
+  <h2>text entry</h2>
+  <div data-text-entry></div>
+</section>
+
+<section class="pending">
+  <div class="pending-header-row">
+    <h2>pending in <code>inbox/</code></h2>
+    <div class="pull-actions">
+      <button type="button" id="pull-btn" class="pull-btn">import from recorder</button>
+      <span class="pull-status" hidden></span>
+    </div>
+  </div>
+  <div data-pending-list><p class="empty">loading…</p></div>
+</section>
+
+<script src="/static/record.js" defer></script>
+{% endblock %}

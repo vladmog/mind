@@ -1,0 +1,2 @@
+bin/mind     text eol=lf
+bin/mind.cmd text eol=crlf

@@ -1,0 +1,117 @@
+# mind — configuration
+#
+# This file controls tunable behavior. The wiki's schema lives in AGENTS.md;
+# this file is only for knobs.
+#
+# Overlays (later wins): config.yaml < config.wiki.yaml < config.local.yaml.
+#   config.wiki.yaml  — wiki-scoped overrides (taxonomy, lint exemptions);
+#                       tracked by the private DATA repo, syncs with your wiki.
+#   config.local.yaml — per-machine overrides (source dirs, whisper paths);
+#                       gitignored. Template: config.local.example.yaml.
+# NOTE: lists replace wholesale on merge — an overlay extending a list must
+# repeat the entries from this file, then add its own.
+
+agent:
+  # Command to invoke your LLM agent non-interactively.
+  # Claude Code example: ["claude", "-p"]  (prints to stdout, no REPL)
+  # Replace with any tool-using agent that reads files + the prompt on stdin.
+  command: ["claude", "-p"]
+  model: claude-opus-4-7
+
+preprocessing:
+  # On ingest, should non-text modalities produce a sibling text artifact?
+  # When enabled: foo.mp3 -> foo.transcript.md, scan.pdf -> scan.text.md, photo.jpg -> photo.caption.md
+  # When disabled: the agent reads the original on demand (vision model for images, etc.)
+  audio:
+    enabled: true
+    tool: whisper-cpp           # options: whisper-cpp | mlx-whisper | openai-whisper-api | off
+    model: base.en              # whisper model name (resolves to whisper.cpp/models/ggml-<model>.bin)
+    # Optional overrides; leave null to auto-resolve.
+    # `whisper.cpp/` is gitignored — clone + build locally per machine (see README).
+    model_path: null            # explicit ggml model file; overrides `model` lookup
+    binary: null                # explicit whisper-cli path; else PATH, else ./whisper.cpp/build/bin/whisper-cli
+  pdf:
+    enabled: true
+    tool: pypdf                 # options: pypdf | pypdf+tesseract | off
+  image:
+    enabled: true               # writes a minimal .caption.md sibling so the UI pending list can track images and attach ingest instructions. The ingest agent reads the raw image directly via its vision model; no OCR step.
+  video:
+    enabled: false              # off by default
+    tool: ffmpeg+whisper
+
+ingest:
+  default_mode: interactive     # interactive | batch
+  auto_commit: true
+
+digest:
+  # `mind digest` re-runs cross-reference synthesis across journal/source entries
+  # in a window, producing a digest page with proposed edits (dry-run by default).
+  default_window_days: 7        # fallback when no prior digest exists (--since-last default)
+  auto_commit: true             # commit the new digest page + index/log updates
+  min_cluster_size: 2           # entries are clustered by shared concept links; singletons are dropped
+  open_threads_slug: open-threads   # page the agent maintains across runs
+
+verify:
+  # Human review of preprocessed siblings (transcripts, extracts, captions)
+  # before the wiki agent ingests them. Aborts if the output is wrong.
+  # `mind ingest --no-verify` or `--batch` bypasses the gate.
+  default: true
+  modalities: [audio, image, pdf]   # which sibling kinds to gate
+  max_inline_lines: 200             # display is clipped above this
+
+query:
+  # What to do with the agent's answer: save it back as a wiki page?
+  file_answer_default: prompt   # prompt | always | never
+
+raw:
+  # Filename convention applied when `mind ingest` moves a file into raw/
+  filename_convention: "{date}_{slug}{ext}"
+
+pull:
+  # Per-kind source dirs are per-machine — set them in config.local.yaml (gitignored).
+  # See config.local.example.yaml for the shape; typical kinds are `docs` and `audio`.
+  sources: {}
+  # Where pulled files land inside the mind project, pre-ingestion.
+  staging_dir: inbox
+  # Move files out of source by default (like mailman). --keep on the CLI overrides.
+  move: true
+
+lint:
+  # Deterministic lint runs on every `mind commit` and gates the commit.
+  # Bypass with `mind commit --no-lint` (escape hatch for in-progress work).
+  block_commit: true
+
+  # tags[0] must be one of these canonical page types.
+  page_types: [entity, concept, source, daily, query, digest, meta]
+
+  # Pages whose slug is in this list are exempt from related-symmetry and
+  # orphan checks. They are catalogs, operational pages, or natural hubs
+  # with many incoming links by design — enforcing back-links on every
+  # mention would be noise. Add a slug here when a page legitimately
+  # accumulates inbound links from across the wiki.
+  # Ships with just the operational catalogs `mind init` seeds. As your wiki
+  # grows hubs (an owner profile, life-area inventories), add their slugs in
+  # config.wiki.yaml — remember to repeat these five (lists replace on merge).
+  meta_exempt_slugs:
+    - index
+    - log
+    - contradictions
+    - open-threads
+    - journal
+
+  # Canonical secondary-tag vocabulary. Pages may only use tags drawn from
+  # this set (in addition to the page-type at tags[0]). New tags require an
+  # explicit config bump — surfaces taxonomy decisions to the user instead
+  # of letting agents invent synonyms. Singular kebab-case is the convention.
+  # Grow it deliberately in config.wiki.yaml (repeat these defaults there —
+  # lists replace on merge). `voice` and `orphan-ok` are load-bearing for the
+  # AGENTS.md journal and lint contracts; keep them.
+  canonical_tags:
+    - device
+    - interest
+    - orphan-ok
+    - person
+    - place
+    - practice
+    - software
+    - voice

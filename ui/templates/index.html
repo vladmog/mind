@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}mind — index{% endblock %}
+{% block content %}
+{% set sort_suffix = ('&sort=' ~ active_sort) if active_sort and active_sort != 'connections' else '' %}
+<section class="facets">
+  <div>
+    <h3>types</h3>
+    <ul class="facet-list">
+      {% for t, n in type_counts.items() %}
+      <li>
+        <a href="/all?type={{ t }}{{ sort_suffix }}" class="{{ 'active' if active_type == t else '' }}">{{ t }} <span class="count">{{ n }}</span></a>
+      </li>
+      {% endfor %}
+      {% if active_type or active_tag %}<li><a href="/all{% if sort_suffix %}?{{ sort_suffix[1:] }}{% endif %}">clear</a></li>{% endif %}
+    </ul>
+  </div>
+  <div>
+    <h3>tags</h3>
+    <ul class="facet-list">
+      {% for t, n in tag_counts.items() %}
+      <li>
+        <a href="/all?tag={{ t }}{{ sort_suffix }}" class="{{ 'active' if active_tag == t else '' }}">{{ t }} <span class="count">{{ n }}</span></a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+{% set filter_prefix = '' %}
+{% if active_type %}{% set filter_prefix = 'type=' ~ active_type ~ '&' %}{% endif %}
+{% if active_tag %}{% set filter_prefix = 'tag=' ~ active_tag ~ '&' %}{% endif %}
+
+<section class="entries">
+  <h2>
+    {% if active_type %}type:{{ active_type }}
+    {% elif active_tag %}tag:{{ active_tag }}
+    {% else %}all pages
+    {% endif %}
+    <span class="count">({{ entries|length }})</span>
+  </h2>
+  <ul class="facet-list sort-control">
+    <li class="sort-label">sort:</li>
+    <li><a href="/all?{{ filter_prefix }}sort=connections" class="{{ 'active' if active_sort == 'connections' else '' }}">connections</a></li>
+    <li><a href="/all?{{ filter_prefix }}sort=title" class="{{ 'active' if active_sort == 'title' else '' }}">a–z</a></li>
+    <li><a href="/all?{{ filter_prefix }}sort=updated" class="{{ 'active' if active_sort == 'updated' else '' }}">updated</a></li>
+  </ul>
+  {% if not entries %}
+    <p class="empty">No pages yet. Ingest a source with <code>./bin/mind ingest &lt;path&gt;</code>.</p>
+  {% endif %}
+  <ul class="entry-list">
+    {% for e in entries %}
+    <li>
+      <a href="/p/{{ e.slug }}">{{ e.title }}</a>
+      <span class="tags">{% for t in e.tags %}<span class="tag">{{ t }}</span>{% endfor %}</span>
+      {% if e.summary %}<div class="summary">{{ e.summary }}</div>{% endif %}
+      <div class="meta">
+        {{ e.connections }} connection{{ '' if e.connections == 1 else 's' }}
+        {% if e.updated %} · updated {{ e.updated }}{% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

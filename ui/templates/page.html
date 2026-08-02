@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ fm.title or slug }} — mind{% endblock %}
+{% block content %}
+<article class="page">
+  <div class="page-meta">
+    {% if fm.tags %}<span class="tags">{% for t in fm.tags %}<a href="/?tag={{ t }}" class="tag">{{ t }}</a>{% endfor %}</span>{% endif %}
+    {% if fm.updated %}<span class="meta">updated {{ fm.updated }}</span>{% endif %}
+    {% if fm.created %}<span class="meta">created {{ fm.created }}</span>{% endif %}
+  </div>
+  <div class="page-body">
+    {{ html | safe }}
+  </div>
+
+  {% if fm.sources %}
+  <aside class="page-sources">
+    <h3>Sources</h3>
+    <ul>
+      {% for s in fm.sources %}<li><a href="/{{ s }}">{{ s }}</a></li>{% endfor %}
+    </ul>
+  </aside>
+  {% endif %}
+
+  {% if typed %}
+  <aside class="page-links typed">
+    <h3>Typed relations</h3>
+    {% for kind, targets in typed.items() %}
+    <div>
+      <strong>{{ kind }}</strong>:
+      {% for t in targets %}<a href="/p/{{ t.slug }}">{{ t.title }}</a>{% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% endfor %}
+  </aside>
+  {% endif %}
+
+  <aside class="page-links">
+    {% if outbound %}
+    <div>
+      <h3>Links out ({{ outbound|length }})</h3>
+      <ul>{% for p in outbound %}<li><a href="/p/{{ p.slug }}">{{ p.title }}</a></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    {% if inbound %}
+    <div>
+      <h3>Backlinks ({{ inbound|length }})</h3>
+      <ul>{% for p in inbound %}<li><a href="/p/{{ p.slug }}">{{ p.title }}</a></li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+  </aside>
+</article>
+{% endblock %}

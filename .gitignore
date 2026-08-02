@@ -1,0 +1,34 @@
+# Personal data (wiki/, raw/, config.wiki.yaml) lives in a separate local-only
+# git repo (.git-data) sharing this worktree — see README "Two repos, one
+# directory". Ignoring it here makes every clone safe by default: `git add -A`
+# in the code repo can never stage personal data. The data repo deliberately
+# bypasses these rules — `mind commit` stages with `git add -f`.
+/wiki/
+/raw/
+/config.wiki.yaml
+.git-data/
+
+# Local working notes (philosophy drafts, specs) — not part of the app.
+notes/
+
+cache/
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+spec.txt.bak
+.env
+.playwright-mcp/
+graph-*.png
+inbox/*
+!inbox/.gitkeep
+
+# whisper.cpp is per-machine: clone + build locally, don't commit binaries or models.
+whisper.cpp/
+
+# Per-machine config override (pull source dirs, whisper paths, etc.).
+# Template lives at config.local.example.yaml.
+config.local.yaml
+
+# Claude Code per-machine state (scheduled task locks, etc.).
+.claude/

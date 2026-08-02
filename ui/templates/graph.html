@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}graph — mind{% endblock %}
+{% block content %}
+<section>
+  <h2>graph</h2>
+  <p class="meta">Force-directed view of the wiki graph. Nodes are grouped by sub-tag; size reflects link degree. Drag to rearrange. Scroll to zoom. Click a node to open the page.</p>
+  <div id="graph-root"></div>
+  <div id="graph-legend" class="graph-legend"></div>
+</section>
+<style>
+  .graph-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; font-size: 11px; color: var(--muted); }
+  .graph-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; border: 1px solid var(--border); }
+  .graph-legend span.item { white-space: nowrap; }
+</style>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script>
+  const data = {{ graph_data | safe }};
+  const width = Math.min(window.innerWidth - 80, 1100);
+  const height = Math.max(window.innerHeight - 260, 680);
+
+  // --- degree per node ---
+  const degree = new Map();
+  data.edges.forEach(e => {
+    degree.set(e.source, (degree.get(e.source) || 0) + 1);
+    degree.set(e.target, (degree.get(e.target) || 0) + 1);
+  });
+  data.nodes.forEach(n => { n.degree = degree.get(n.id) || 0; });
+
+  // --- cluster key: tags[1] (sub-tag) falls back to tags[0] or type ---
+  const clusterOf = (n) => (n.tags && n.tags[1]) || (n.tags && n.tags[0]) || n.type || "untyped";
+  data.nodes.forEach(n => { n.cluster = clusterOf(n); });
+
+  // --- cluster sizes & centroids on a ring ---
+  const counts = d3.rollup(data.nodes, v => v.length, d => d.cluster);
+  const clusters = Array.from(counts.entries()).sort((a,b) => b[1]-a[1]).map(([k,c]) => ({key:k,count:c}));
+  const ringRadius = Math.min(width, height) * 0.38;
+  const cx = width / 2, cy = height / 2;
+
+  // --- greedy seriation: place linked clusters adjacent on the ring to reduce edge crossings ---
+  const clusterById = new Map(data.nodes.map(n => [n.id, n.cluster]));
+  const pairKey = (a, b) => a < b ? `${a}|${b}` : `${b}|${a}`;
+  const W = new Map();
+  data.edges.forEach(e => {
+    const sid = typeof e.source === 'object' ? e.source.id : e.source;
+    const tid = typeof e.target === 'object' ? e.target.id : e.target;
+    const sc = clusterById.get(sid), tc = clusterById.get(tid);
+    if (sc && tc && sc !== tc) W.set(pairKey(sc, tc), (W.get(pairKey(sc, tc)) || 0) + 1);
+  });
+  const wBetween = (a, b) => a === b ? 0 : (W.get(pairKey(a, b)) || 0);
+
+  const keys = clusters.map(c => c.key);
+  const remaining = new Set(keys);
+  let order = [];
+  if (keys.length === 1) {
+    order = [keys[0]];
+    remaining.clear();
+  } else if (keys.length > 1) {
+    let seed = null, seedW = -1;
+    for (let i = 0; i < keys.length; i++) {
+      for (let j = i + 1; j < keys.length; j++) {
+        const w = wBetween(keys[i], keys[j]);
+        if (w > seedW) { seedW = w; seed = [keys[i], keys[j]]; }
+      }
+    }
+    if (seedW > 0) { order = [seed[0], seed[1]]; }
+    else { order = [keys[0]]; }
+    order.forEach(k => remaining.delete(k));
+    while (remaining.size > 0) {
+      let pick = null, side = 'right', pickW = -1;
+      for (const c of remaining) {
+        const wL = wBetween(c, order[0]);
+        const wR = wBetween(c, order[order.length - 1]);
+        if (wL > pickW) { pickW = wL; pick = c; side = 'left'; }
+        if (wR > pickW) { pickW = wR; pick = c; side = 'right'; }
+      }
+      if (pick === null) { pick = remaining.values().next().value; side = 'right'; }
+      side === 'left' ? order.unshift(pick) : order.push(pick);
+      remaining.delete(pick);
+    }
+  }
+
+  const centroid = new Map();
+  order.forEach((key, i) => {
+    const theta = -Math.PI / 2 + (i * 2 * Math.PI) / order.length;
+    centroid.set(key, { x: cx + ringRadius * Math.cos(theta), y: cy + ringRadius * Math.sin(theta) });
+  });
+
+  // --- color scale across up to 20 clusters ---
+  const palette = d3.schemeCategory10.concat(d3.schemeSet3);
+  const clusterColor = d3.scaleOrdinal().domain(clusters.map(c => c.key)).range(palette);
+
+  // --- node sizing ---
+  const radiusOf = (d) => 4 + Math.sqrt(d.degree) * 1.8;
+
+  // --- identify super-hubs to dim their edges (so the rest of the structure reads) ---
+  const superHubs = new Set(
+    data.nodes
+      .filter(n => n.degree >= Math.max(40, data.nodes.length * 0.5))
+      .map(n => n.id)
+  );
+
+  function themeTokens() {
+    const css = getComputedStyle(document.documentElement);
+    const tok = (n, fallback) => (css.getPropertyValue(n).trim() || fallback);
+    return {
+      bgSoft: tok('--bg-soft', '#fafafa'),
+      border: tok('--border', '#eee'),
+      muted:  tok('--muted',  '#888'),
+      fg:     tok('--fg',     '#333'),
+    };
+  }
+  let T = themeTokens();
+
+  const svg = d3.select("#graph-root").append("svg")
+    .attr("width", width).attr("height", height)
+    .style("background", T.bgSoft).style("border", `1px solid ${T.border}`).style("border-radius", "6px");
+  const g = svg.append("g");
+  const zoom = d3.zoom().on("zoom", (e) => g.attr("transform", e.transform));
+  svg.call(zoom);
+
+  function fitToView() {
+    if (!data.nodes.length) return;
+    const pad = 40;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of data.nodes) {
+      if (n.x < minX) minX = n.x;
+      if (n.x > maxX) maxX = n.x;
+      if (n.y < minY) minY = n.y;
+      if (n.y > maxY) maxY = n.y;
+    }
+    const w = maxX - minX, h = maxY - minY;
+    if (!(w > 1 && h > 1)) return;
+    const scale = Math.min((width - 2 * pad) / w, (height - 2 * pad) / h, 1);
+    const tx = width / 2 - scale * (minX + maxX) / 2;
+    const ty = height / 2 - scale * (minY + maxY) / 2;
+    svg.call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+  }
+
+  const simulation = d3.forceSimulation(data.nodes)
+    .force("link", d3.forceLink(data.edges).id(d => d.id)
+      .distance(l => (l.source.cluster === l.target.cluster ? 75 : 180))
+      .strength(l => (l.source.cluster === l.target.cluster ? 0.6 : 0.15)))
+    .force("charge", d3.forceManyBody().strength(-450))
+    .force("x", d3.forceX(d => centroid.get(d.cluster).x).strength(0.12))
+    .force("y", d3.forceY(d => centroid.get(d.cluster).y).strength(0.12))
+    .force("collide", d3.forceCollide(d => radiusOf(d) + 8))
+    .stop();
+
+  // Settle synchronously so nodes have final positions before first paint.
+  const settleTicks = Math.ceil(
+    Math.log(simulation.alphaMin()) / Math.log(1 - simulation.alphaDecay())
+  );
+  for (let i = 0; i < settleTicks; i++) simulation.tick();
+
+  const link = g.append("g")
+    .selectAll("line").data(data.edges).join("line")
+    .attr("stroke", T.muted)
+    .attr("stroke-opacity", d => (superHubs.has(d.source.id || d.source) || superHubs.has(d.target.id || d.target)) ? 0.10 : 0.55)
+    .attr("stroke-width", d => (d.source.cluster === d.target.cluster ? 1.2 : 0.8));
+
+  const strokeForType = (type) => (type === 'concept' || type === 'meta') ? T.fg : T.muted;
+  const typeStrokeWidth = { entity: 0.5, concept: 1.2, meta: 1.8, untyped: 0.5 };
+
+  const node = g.append("g").selectAll("g").data(data.nodes).join("g")
+    .call(d3.drag()
+      .on("start", (event, d) => { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
+      .on("drag",  (event, d) => { d.fx = event.x; d.fy = event.y; })
+      .on("end",   (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }))
+    .style("cursor", "pointer")
+    .on("click", (event, d) => { window.location.href = "/p/" + d.id; });
+
+  const circles = node.append("circle")
+    .attr("r", radiusOf)
+    .attr("fill", d => clusterColor(d.cluster))
+    .attr("stroke", d => strokeForType(d.type))
+    .attr("stroke-width", d => typeStrokeWidth[d.type] ?? 0.5);
+
+  const labels = node.append("text")
+    .text(d => d.label)
+    .attr("x", d => radiusOf(d) + 3)
+    .attr("y", 4)
+    .style("font-size", d => `${10 + Math.min(4, Math.sqrt(d.degree) * 0.6)}px`)
+    .style("pointer-events", "none")
+    .style("paint-order", "stroke")
+    .style("fill", T.fg)
+    .style("stroke", T.bgSoft)
+    .style("stroke-width", "3px");
+
+  document.addEventListener('mind:themechange', () => {
+    T = themeTokens();
+    svg.style("background", T.bgSoft).style("border", `1px solid ${T.border}`);
+    link.attr("stroke", T.muted);
+    circles.attr("stroke", d => strokeForType(d.type));
+    labels.style("fill", T.fg).style("stroke", T.bgSoft);
+  });
+
+  function updatePositions() {
+    link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  }
+  simulation.on("tick", updatePositions);
+  updatePositions();
+  fitToView();
+
+  // --- legend ---
+  const legend = d3.select("#graph-legend");
+  clusters.forEach(c => {
+    const item = legend.append("span").attr("class", "item");
+    item.append("span").attr("class", "swatch").style("background", clusterColor(c.key));
+    item.append("span").text(`${c.key} (${c.count})`);
+  });
+</script>
+{% endblock %}

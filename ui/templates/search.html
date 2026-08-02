@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}search{% if q %}: {{ q }}{% endif %} — mind{% endblock %}
+{% block content %}
+<section>
+  <h2>search{% if q %} — <code>{{ q }}</code>{% endif %}</h2>
+  {% if q and not results %}<p class="empty">No matches.</p>{% endif %}
+  <ul class="entry-list">
+    {% for r in results %}
+    <li>
+      <a href="/p/{{ r.slug }}">{{ r.title }}</a>
+      <div class="summary">{{ r.snippet | safe }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

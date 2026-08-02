@@ -1,0 +1,12 @@
+#!/bin/sh
+# mind — tiny launcher. Runs bin/mind.py using the project's local .venv if present,
+# otherwise falls back to system python3.
+set -e
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+VENV_PY="$ROOT/.venv/bin/python3"
+if [ -x "$VENV_PY" ]; then
+    exec "$VENV_PY" "$SCRIPT_DIR/mind.py" "$@"
+else
+    exec python3 "$SCRIPT_DIR/mind.py" "$@"
+fi

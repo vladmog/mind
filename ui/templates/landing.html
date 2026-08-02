@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}mind{% endblock %}
+{% block searchbar %}{% endblock %}
+{% block content %}
+<section class="landing-hero">
+  <h1 class="landing-brand">mind</h1>
+  <div class="landing-row">
+    <form class="landing-search" action="/search" method="get" data-suggest>
+      <input type="search" name="q" placeholder="search the wiki…" autocomplete="off" aria-autocomplete="list">
+    </form>
+    <div class="landing-recorder" data-recorder data-variant="compact"></div>
+  </div>
+</section>
+<script src="/static/record.js" defer></script>
+{% endblock %}

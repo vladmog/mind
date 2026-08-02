@@ -1,0 +1,46 @@
+# mind — per-machine config override (template)
+#
+# Copy this file to `config.local.yaml` (gitignored) and edit for this machine.
+# Values here are deep-merged *over* config.yaml at load time, so you only need
+# to set the keys that differ per-machine (source paths, whisper paths, etc.).
+#
+# The file itself is the per-machine override — there is no `platform:` switch
+# in code. Each machine just declares the paths that exist on it.
+# For overrides that should travel WITH your wiki data (taxonomy: extra
+# lint.canonical_tags / lint.meta_exempt_slugs), use config.wiki.yaml instead —
+# it is tracked by the private data repo. Remember lists replace wholesale on
+# merge: repeat the config.yaml defaults before adding your own entries.
+# Paths: `~` expands to the home dir on every OS (%USERPROFILE% on Windows),
+# and forward slashes work everywhere, including Windows.
+
+pull:
+  # Map of kind → source folder. `mind pull --kind <kind>` drains one; the
+  # default `mind pull` (kind=all) drains every configured source in turn.
+  # Kinds are free-form labels; `docs` and `audio` are the conventional two.
+  sources:
+    # --- macOS example ---
+    # docs:  ~/Dropbox/mind_inbox/docs
+    # audio: ~/Dropbox/mind_inbox/audio
+    #
+    # --- Windows example ---
+    # docs:  ~/Dropbox/mind_inbox/docs
+    # audio: C:/Users/you/Recordings
+
+preprocessing:
+  audio:
+    # whisper.cpp is per-machine (gitignored). Usually leave all three unset:
+    # bin/mind auto-discovers `whisper-cli` on PATH, then falls back to
+    # ./whisper.cpp/... candidates (see README "How bin/mind finds it").
+    # Set these only to override.
+    #
+    # model: which ggml model to look up in ./whisper.cpp/models/.
+    # Bigger = better transcription: base.en < small.en < medium.en < large-v3-turbo.
+    # model: large-v3-turbo
+    #
+    # --- macOS (Homebrew) example ---
+    # binary:     /opt/homebrew/bin/whisper-cli
+    # model_path: whisper.cpp/models/ggml-base.en.bin   # ROOT-relative works
+    #
+    # --- Windows example (prebuilt release zip unpacked into the repo) ---
+    # binary:     whisper.cpp/whisper-cli.exe
+    # model_path: whisper.cpp/models/ggml-base.en.bin
