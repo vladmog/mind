@@ -2,25 +2,6 @@
 
 A wiki for arbitrary data and information in one life. Structured as a graph of markdown files. Maintained by LLM agents. Browseable by humans via a small web UI.
 
-## Layout
-
-- `raw/` — immutable inputs (text, audio, image, pdf, video). Drop things here. *(data repo)*
-- `wiki/` — the LLM-maintained markdown graph. Source of truth. *(data repo)*
-- `cache/` — derived indexes; disposable. Rebuild with `./bin/mind rebuild-cache`.
-- `bin/mind` — the CLI (init, ingest, query, lint, search, index, graph, serve).
-- `ui/` — the read-only web UI served by `./bin/mind serve`.
-- `seed/wiki/` — generic starter pages `./bin/mind init` copies into a fresh `wiki/`.
-- `config.yaml` — tunable knobs (preprocessing toggles, agent command, defaults).
-- `config.wiki.yaml` — wiki-scoped overrides (your taxonomy). *(data repo)*
-- `config.local.yaml` — per-machine overrides (paths). Gitignored; see `config.local.example.yaml`.
-
-## For agents
-
-- `AGENTS.md` — the canonical contract for any agent operating on the wiki.
-- `CLAUDE.md` — Claude-Code-specific layer pointing at `AGENTS.md`.
-- `llm-wiki.md` — the underlying philosophy.
-- `notes/` — local working notes (older drafts, specs). Gitignored; not part of the app.
-
 ## Quick start
 
 ```bash
@@ -44,6 +25,40 @@ cp ~/Downloads/some-article.md raw/
 ```
 
 `mind init` is idempotent: it only creates what's missing and never overwrites pages you already have.
+
+## Everyday commands
+
+The commands you'll actually type. (The rest of the CLI — `index`, `search`, `graph`, `lint`, `rebuild-cache` — mostly exists for the agent; run `./bin/mind --help` for the full list.)
+
+```bash
+./bin/mind pull                   # fetch new files from your source folders into inbox/
+./bin/mind pending                # see what's staged in inbox/ awaiting ingest
+./bin/mind ingest <file>          # feed a note, audio clip, image, or PDF into the wiki
+./bin/mind query "..."            # ask a question against the wiki
+./bin/mind serve                  # browse the wiki at http://localhost:8787
+./bin/mind digest                 # synthesize across recent entries (run every week or two)
+```
+
+Commits happen automatically after every mutating operation; `./bin/mind commit` is only needed if you turn auto-commit off in `config.yaml`.
+
+## Layout
+
+- `raw/` — immutable inputs (text, audio, image, pdf, video). Drop things here. *(data repo)*
+- `wiki/` — the LLM-maintained markdown graph. Source of truth. *(data repo)*
+- `cache/` — derived indexes; disposable. Rebuild with `./bin/mind rebuild-cache`.
+- `bin/mind` — the CLI (init, ingest, query, lint, search, index, graph, serve).
+- `ui/` — the read-only web UI served by `./bin/mind serve`.
+- `seed/wiki/` — generic starter pages `./bin/mind init` copies into a fresh `wiki/`.
+- `config.yaml` — tunable knobs (preprocessing toggles, agent command, defaults).
+- `config.wiki.yaml` — wiki-scoped overrides (your taxonomy). *(data repo)*
+- `config.local.yaml` — per-machine overrides (paths). Gitignored; see `config.local.example.yaml`.
+
+## For agents
+
+- `AGENTS.md` — the canonical contract for any agent operating on the wiki.
+- `CLAUDE.md` — Claude-Code-specific layer pointing at `AGENTS.md`.
+- `llm-wiki.md` — the underlying philosophy.
+- `notes/` — local working notes (older drafts, specs). Gitignored; not part of the app.
 
 ## Audio transcription (whisper.cpp)
 
